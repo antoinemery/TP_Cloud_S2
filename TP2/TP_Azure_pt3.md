@@ -17,6 +17,7 @@ Terraform va permettre d'automatiser la création de ressources dans Azure, *Res
   - [1. Introooo](#1-introooo)
   - [2. Copy paste](#2-copy-paste)
   - [3. Do it yourself](#3-do-it-yourself)
+  - [4. cloud-iniiiiiiiiiiiiit](#4-cloud-iniiiiiiiiiiiiit)
 
 ## 1. Introooo
 
@@ -411,3 +412,205 @@ antoine@CLOUD--node1-vm:~$ ping 10.0.1.5
 PING 10.0.1.5 (10.0.1.5) 56(84) bytes of data.
 64 bytes from 10.0.1.5: icmp_seq=1 ttl=64 time=1.15 ms
 ````
+## 4. cloud-iniiiiiiiiiiiiit
+
+🌞 **Intégrer la gestion de `cloud-init`**
+
+- ### ``Main.Tf`` :
+  - ````bash
+      provider "azurerm" {
+      features {}
+      subscription_id = "Et non tu l'auras pas"
+      }
+
+    resource "azurerm_resource_group" "main" {
+      name     = "${var.prefix}-resources"
+      location = var.location
+    }
+
+    resource "azurerm_virtual_network" "main" {
+      name                = "${var.prefix}-network"
+      address_space       = ["10.0.0.0/16"]
+      location            = azurerm_resource_group.main.location
+      resource_group_name = azurerm_resource_group.main.name
+    }
+
+    resource "azurerm_subnet" "internal" {
+      name                 = "internal"
+      resource_group_name  = azurerm_resource_group.main.name
+      virtual_network_name = azurerm_virtual_network.main.name
+      address_prefixes     = ["10.0.1.0/24"]
+    }
+
+    resource "azurerm_public_ip" "pip" {
+      name                = "${var.prefix}-pip"
+      resource_group_name = azurerm_resource_group.main.name
+      location            = azurerm_resource_group.main.location
+      allocation_method   = "Static"
+    }
+
+    resource "azurerm_network_interface" "vm_nic" {
+      name                = "${var.prefix}-vm-nic"
+      resource_group_name = azurerm_resource_group.main.name
+      location            = azurerm_resource_group.main.location
+
+      ip_configuration {
+        name                          = "primary"
+        subnet_id                     = azurerm_subnet.internal.id
+        private_ip_address_allocation = "Dynamic"
+        public_ip_address_id          = azurerm_public_ip.pip.id
+      }
+    }
+
+    resource "azurerm_network_security_group" "ssh" {
+      name                = "ssh"
+      location            = azurerm_resource_group.main.location
+      resource_group_name = azurerm_resource_group.main.name
+      security_rule {
+        access                     = "Allow"
+        direction                  = "Inbound"
+        name                       = "ssh"
+        priority                   = 100
+        protocol                   = "Tcp"
+        source_port_range          = "*"
+        source_address_prefix      = "*"
+        destination_port_range     = "22"
+        destination_address_prefix = azurerm_network_interface.vm_nic.private_ip_address
+      }
+      
+      security_rule {
+        access                     = "Allow"
+        direction                  = "Inbound"
+        name                       = "AllowWikiJS"
+        priority                   = 110
+        protocol                   = "Tcp"
+        source_port_range          = "*"
+        source_address_prefix      = "*"
+        destination_port_range     = "10101"
+        destination_address_prefix = "*"
+      }
+    }
+    resource "azurerm_network_interface_security_group_association" "pow" {
+      network_interface_id      = azurerm_network_interface.vm_nic.id
+      network_security_group_id = azurerm_network_security_group.ssh.id
+    }
+
+    resource "azurerm_linux_virtual_machine" "wikijs" {
+      name                = "${var.prefix}-vm"
+      resource_group_name = azurerm_resource_group.main.name
+      location            = azurerm_resource_group.main.location
+      size                = "Standard_B1s"
+      admin_username      = "antoine"
+      network_interface_ids = [
+        azurerm_network_interface.vm_nic.id
+      ]
+
+      admin_ssh_key {
+        username   = "antoine "
+        public_key = file("C:\\Users\\PC\\.ssh\\id_rsa.pub")
+      }
+
+      custom_data = base64encode(file("C:\\Users\\PC\\Documents\\Cours\\Cloud\\TP2\\CloudInit\\2\\cloud-init.txt"))
+
+      source_image_reference {
+        publisher = "Canonical"
+        offer     = "0001-com-ubuntu-server-jammy"
+        sku       = "22_04-lts"
+        version   = "latest"
+      }
+
+      os_disk {
+        storage_account_type = "Standard_LRS"
+        caching              = "ReadWrite"
+      }
+    }
+    ````
+
+- ### ``variables.Tf`` :
+  - ````bash
+      variable "prefix" {
+      description = "Project prefix"
+      default     = "partie4B"
+      }
+
+    variable "location" {
+      description = "Azure region"
+      default     = "West Europe"
+    } 
+    ````
+
+- ### ``cloud-init.txt`` :
+  - ````bash
+        #cloud-config
+    users:
+      - default
+      - name: antoine
+        sudo: sudo
+        groups: sudo, docker
+        shell: /bin/bash
+        ssh_authorized_keys:
+          - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQD5oYQ6UQVaejTKh+l3tOSo90GzxiAbfai+H/5tBpzXaJ4a/dPLGbazMZKhEgztSmgIdsnKxz+sgJWYIxRkN8Z3zvOpiQILpieo9pN7ltkJ8VuG2MHs1KEe+1puvy6ks3IRfevJmczi5vmorMRD8crjJKS1W7dIIkkGQ2o6t94KROBNdb4Yt/3/GIVqsrvKsDZ/uPEbgLXSqWUkPXdc3dQvQXl6Si9YRUZJ1tJMqyM4xRgMBdWwMql09T4coXMb9SFNS6/S8h7E6xuUW/+GWrqv8vE62zp8ZqPTSWPMMkHzIb+ndSIqf3FtXge1sLxKyaWua/kEPQbSRXP5PYTWATx/uQIU+Iy2kMQHEbxXnIygjOTosuLHitxBDvPiHjOvovrR6Bu+q0ssMLmDqMiscVzzo2GlGkKqB7BzhtcXhOv1SDTAEyA7ULBiRcnmCGyWBMcRjKdcaRxWNXocIjkxfjUfPMPWMb2UzG4di495Uo182YXuhO+WSF5hz7Uw8y3G4I1HWdHm6pVtHbxw3BvuYSwqqWLxc7Sgqp0JTZLcAj7hBUc07gOAMcG+UVTkhXtC+PRmHDjz6J5TvpwkDfWW1yTh5ZXjd4yTxKaiUtjMKExWqsC0Ncr2tzgyWatvFc59hoUp6yCLC5PPQfrMYQePID8WfjZBbav8qGl+xO0KSPo3ew== antoi@PC-ANTOINE-EFREI
+      - path: /opt/wikijs/docker-compose.yml
+        owner: root:root
+        permissions: '0644'
+        content: |
+          version: "3.8"
+
+          services:
+            db:
+              image: mysql:5.7
+              restart: always
+              ports:
+                - '3306:3306'
+              volumes:
+                - "./db/mysql_files:/var/lib/mysql"
+              environment:
+                MYSQL_ROOT_PASSWORD: mysql
+                MYSQL_DATABASE: wiki
+                MYSQL_USER: wiki
+                MYSQL_PASSWORD: mysql
+
+            wiki:
+              image: requarks/wiki
+              restart: always
+              depends_on:
+                - db
+              ports:
+                - "10101:3000"
+              environment:
+                DB_TYPE: mysql
+                DB_HOST: db
+                DB_PORT: 3306
+                DB_USER: wiki
+                DB_PASS: mysql
+                DB_NAME: wiki
+
+    apt:
+      sources:
+        docker.list:
+          source: deb [arch=amd64 signed-by=/usr/share/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $RELEASE stable
+
+    packages:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+
+    runcmd:
+      - docker compose -f /opt/wikijs/docker-compose.yml up -d
+    ````
+
+
+```bash
+PS C:\Users\antoi> ssh antoine@52.246.50.37
+
+user@partie4A-vm:~$ docker images
+REPOSITORY   TAG       IMAGE ID       CREATED       SIZE
+alpine       latest    aded1e1a5b37   4 weeks ago   7.83MB
+```
+---
+
+```bash
+$ curl http://20.16.130.165:10101 | tail -n1
+<div><p>Bonjour !</p></div></template><template slot="comments"><div><comments></comments></div></template></page></div></body></html>
+```
