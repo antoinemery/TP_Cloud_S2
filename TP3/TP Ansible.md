@@ -40,8 +40,8 @@ Dans cette partie, je vous fait :
 - `main.tf` (et éventuellement d'autres fichiers `.tf`)
 - `cloud-init.txt`
 
-    ### [Fichier main.tf](terraform/main.tf)
-    ### [Fichier cloud-init.txt](terraform/cloud-init.txt)
+    ### [Fichier main.tf](main.tf)
+    ### [Fichier cloud-init.txt](cloud-init.txt)
 ---
 
 ### B. Setup sur votre poste
