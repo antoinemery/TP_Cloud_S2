@@ -1,0 +1,17 @@
+users:
+  - name: antoine
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQD5oYQ6UQVaejTKh+l3tOSo90GzxiAbfai+H/5tBpzXaJ4a/dPLGbazMZKhEgztSmgIdsnKxz+sgJWYIxRkN8Z3zvOpiQILpieo9pN7ltkJ8VuG2MHs1KEe+1puvy6ks3IRfevJmczi5vmorMRD8crjJKS1W7dIIkkGQ2o6t94KROBNdb4Yt/3/GIVqsrvKsDZ/uPEbgLXSqWUkPXdc3dQvQXl6Si9YRUZJ1tJMqyM4xRgMBdWwMql09T4coXMb9SFNS6/S8h7E6xuUW/+GWrqv8vE62zp8ZqPTSWPMMkHzIb+ndSIqf3FtXge1sLxKyaWua/kEPQbSRXP5PYTWATx/uQIU+Iy2kMQHEbxXnIygjOTosuLHitxBDvPiHjOvovrR6Bu+q0ssMLmDqMiscVzzo2GlGkKqB7BzhtcXhOv1SDTAEyA7ULBiRcnmCGyWBMcRjKdcaRxWNXocIjkxfjUfPMPWMb2UzG4di495Uo182YXuhO+WSF5hz7Uw8y3G4I1HWdHm6pVtHbxw3BvuYSwqqWLxc7Sgqp0JTZLcAj7hBUc07gOAMcG+UVTkhXtC+PRmHDjz6J5TvpwkDfWW1yTh5ZXjd4yTxKaiUtjMKExWqsC0Ncr2tzgyWatvFc59hoUp6yCLC5PPQfrMYQePID8WfjZBbav8qGl+xO0KSPo3ew== antoi@PC-ANTOINE-EFREI
+
+package_update: true
+package_upgrade: true
+packages:
+  - python3
+  - python3-pip
+  - ansible
+
+runcmd:
+  - systemctl enable ssh
+  - systemctl start ssh
